@@ -4,7 +4,7 @@
 
 [![Intel](https://img.shields.io/badge/Intel-Collaboration-0071C5?logo=intel&logoColor=white)]()
 [![preprint](https://img.shields.io/badge/arXiv-2510.16022-B31B1B)](https://arxiv.org/abs/2510.16022)
-[![collection](https://img.shields.io/badge/HuggingFace-Collection_(TBD)-yellow)](https://huggingface.co/collections/OPTML-Group/TBD)
+[![collection](https://img.shields.io/badge/HuggingFace-Collection-yellow)](https://huggingface.co/collections/OPTML-Group/memorization-barrier)
 [![issues](https://img.shields.io/badge/Issues-Welcome!-yellow)](https://github.com/OPTML-Group/MemorizationBarrier/issues)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](https://github.com/OPTML-Group/MemorizationBarrier?tab=MIT-1-ov-file)
