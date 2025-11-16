@@ -59,7 +59,7 @@ torchrun --nproc_per_node 1  train_ib.py \
 
 ## Download Models
 To directly using our IB-based code model, please refer to our HuggingFace Collection:
-* [🤗](https://huggingface.co/collections/OPTML-Group/)
+* [🤗OPTML-Group](https://huggingface.co/collections/OPTML-Group/memorization-barrier)
 
 
 ## Contributors
