@@ -1,0 +1,41 @@
+# Core deep learning
+torch==2.4.1
+transformers==4.46.3
+accelerate==1.0.1
+peft==0.13.2
+safetensors==0.5.3
+tqdm==4.67.1
+numpy==1.24.4
+scipy==1.10.1
+
+# Tokenization & data
+datasets
+tokenizers==0.20.3
+regex==2024.11.6
+PyYAML==6.0.2
+pandas
+
+# Evaluation (VerilogEval and general utilities)
+-e git+https://github.com/NVlabs/verilog-eval@4fa0ac4ed70ff1685114c25cd2e4c17cbba6a0c4#egg=verilog_eval
+
+# Optional: for logging, experiment management
+rich==13.9.4
+fire==0.7.0
+python-dotenv==1.0.1
+
+# Optional: for PEFT + Hugging Face integration
+huggingface-hub==0.33.2
+fsspec
+filelock
+
+# Optional: for LLM or LangChain evaluation scripts (if used)
+langchain==0.2.17
+langchain-core==0.2.43
+langchain-community==0.2.19
+langsmith==0.1.147
+openai==1.93.2
+tiktoken==0.7.0
+
+# Visualization / Jupyter (optional)
+matplotlib
+ipython

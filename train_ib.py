@@ -1,0 +1,158 @@
+import os
+import logging
+import argparse
+import sys
+import json
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    TrainingArguments,
+    Trainer,
+    DataCollatorWithPadding,
+    set_seed,
+    TrainerCallback,
+)
+
+from datasets import load_dataset
+from transformers.integrations import TensorBoardCallback
+from transformers.trainer_utils import is_main_process 
+import wandb
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from util.ModelWithIB import ModelWithIB
+from util.util import get_training_args,SaveLoRAEverySave, WandbLoggingCallback
+from util.process_data import format_origen
+
+# ========= Custom Trainer =========
+class CustomTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.get("labels")
+        inputs = {k: v for k, v in inputs.items() if k != "labels"}
+        outputs = model(**inputs, labels=labels)
+        loss = outputs["loss"]
+        self.log({
+            "loss_ib": outputs["loss_ib"].item(),
+            "ce_ib": outputs["ce_ib"].item(),
+            "ce_orig": outputs["ce_orig"].item(),
+            "kl_loss": outputs["kl_loss"].item(),
+        })
+        return (loss, outputs) if return_outputs else loss
+    
+
+
+# def format_origen(example):
+#     instruction = example.get("Instruction", "")
+#     response = example.get("Response", "")
+#     return {"Instruction": instruction, "Response": response}
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--base_model", type=str, required=True, help="Base model")
+parser.add_argument("--dataset", type=str, required=True, help="Path to dataset")
+parser.add_argument("--seed", type=int, default=42)
+parser.add_argument("--adapter_config", type=str, required=True, help="Path to adapter configuration file")
+parser.add_argument("--training_config", type=str, required=True, help="Path to training configuration file")
+parser.add_argument("--use_deepspeed", action="store_true")
+parser.add_argument("--alpha", type=float, default=0.2)
+parser.add_argument("--beta", type=float, default=1e-2)
+parser.add_argument("--target_layer", type=int, default=20)
+parser.add_argument("--num_proc", type=int, default=8)
+parser.add_argument('--max_length', type=int, default=2048)
+args = parser.parse_args()
+
+
+
+def main():
+    print(f"Training...{args.base_model} on {args.dataset}")
+
+    set_seed(args.seed)
+    training_args = get_training_args(args.training_config)
+
+    if args.use_deepspeed:
+        training_args.deepspeed = "config/ds_config.json"
+
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    
+    model = ModelWithIB(
+        base_id=args.base_model,
+        Lora_config_path=args.adapter_config,
+    )
+
+    if args.dataset == "henryen/origen_dataset_instruction":
+        print(f"Dealing with dataset {args.dataset}")
+        dataset = load_dataset(args.dataset, split="train")
+        dataset = dataset.map(format_origen, remove_columns=dataset.column_names)
+        def tokenize_origen(example):
+            prompt = example["Instruction"] + "\n"
+            response = example["Response"]
+            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+            response_ids = tokenizer.encode(response, add_special_tokens=False)
+
+            input_ids = prompt_ids + response_ids
+            attention_mask = [1] * len(input_ids)
+            labels = [-100] * len(prompt_ids) + response_ids
+            
+            #Cound the total legth before padding
+            num_tokens = len(input_ids)
+
+            max_len = args.max_length
+            pad_id = tokenizer.pad_token_id or tokenizer.eos_token_id
+            padding_length = max_len - len(input_ids)
+
+            if padding_length > 0:
+                # pad to max_len
+                input_ids += [pad_id] * padding_length
+                attention_mask += [0] * padding_length
+                labels += [-100] * padding_length
+            else:
+                # if over max_len and cut
+                input_ids = input_ids[:max_len]
+                attention_mask = attention_mask[:max_len]
+                labels = labels[:max_len]
+
+            return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
+            "num_tokens": num_tokens,
+        }
+
+        tokenized_dataset = dataset.map(
+        tokenize_origen, 
+        num_proc=min(args.num_proc, os.cpu_count()),  # parallel workers (processes)
+        remove_columns=dataset.column_names,
+        load_from_cache_file=True,)
+        print(f"Total tokens in dataset: {sum(tokenized_dataset['num_tokens'])}")
+        import pdb
+        pdb.set_trace()
+
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True, return_tensors="pt")
+
+    trainer = CustomTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_dataset,
+        tokenizer=tokenizer,
+        data_collator=data_collator,
+        callbacks=[TensorBoardCallback(), WandbLoggingCallback(),SaveLoRAEverySave(keep_last_n = training_args.save_total_limit)],
+    )
+
+    trainer.train()
+    model.lm.save_pretrained(training_args.output_dir)
+    tokenizer.save_pretrained(training_args.output_dir)
+    if is_main_process(training_args.local_rank):
+        wandb.finish()
+
+
+
+if __name__=="__main__":
+    main()
