@@ -17,7 +17,7 @@
 <table align="center">
   <tr>
     <td align="center"> 
-      <img src="Images/teaser.png" alt="Teaser" style="width: 1000px;"/> 
+      <img src="teaser.png" alt="Teaser" style="width: 550px;"/> 
       <br>
       <em style="font-size: 18px;">
         <strong style="font-size: 18px;">Figure 1:</strong>
@@ -27,31 +27,25 @@
   </tr>
 </table>
 
-This is the official code repository for the paper
+Official repository for
 [Breaking Memorization Barriers in LLM Code Fine-Tuning via Information Bottleneck for Improved Generalization](https://arxiv.org/abs/2510.16022).
 
 
+## Abstract
 
+Adapting pretrained large language models (LLMs) to code domains via supervised fine-tuning (FT) has been commonly used for code generation. However, we identify a previously underappreciated failure mode, the memorization barrier, where strong memorization of downstream code data in the base model could trap optimization and prevent the standard FT from effectively acquiring new, generalizable code knowledge. To overcome this barrier, we propose the information bottleneck (IB)-guided fine-tuning, termed IB-FT, which applies an IB penalty on hidden representations of the code data to compress spurious, memorized features while preserving task-relevant information. Extensive experiments on two code benchmarks (OriGen and Evol-CodeAlpaca-V1) show that IB-FT substantially alleviates the memorization barrier, improves top-1 performance (Pass@1), and yields far more stable gains under the stricter multi-sample metric Pass@k(m) (a problem counts as solved only if at least m of k samples pass unit tests) compared with conventional FT.
 
+## Getting Started
 
+### Installation
 
+You can install the required dependencies using the following command:
+```
+pip install -r requirements.txt
+```
+### Training IB-FT
 
-
-
-
-
-
-
-
-
-# Breaking Memorization Barriers in LLM Code Fine-Tuning via Information Bottleneck for Improved Generalization
-## Overview
-**Memorization barrier:**  : The phenomenon where *LLM code fine-tuning* starts from a base model $\theta_0$ that already strongly memorizes the fine-tuning set $\mathcal{D}_{\text{code}}$, placing optimization in a state that the conventional fine-tuning objective struggles to escape — thereby leading to poor generalization on downstream code tasks.
-
-
-
-## Training IB-FT
-```bash
+```
 export WANDB_API_KEY=XXX
 export HUGGINGFACE_TOKEN=XXX
 
@@ -61,4 +55,23 @@ torchrun --nproc_per_node 1  train_ib.py \
     --adapter_config="./config/adapter_config.json"\
     --dataset="henryen/origen_dataset_instruction"\
     --use_deepspeed
+```
+
+## Download Models
+To directly using our IB-based code model, please refer to our HuggingFace Collection:
+* [🤗](https://huggingface.co/collections/OPTML-Group/)
+
+
+## Contributors
+* [Changsheng Wang](https://changshengwang.me/)
+* [Xin Chen](https://xinchenhawaii.github.io/)
+
+## Cite This Work
+```
+@article{wang2025breaking,
+  title={Breaking Memorization Barriers in LLM Code Fine-Tuning via Information Bottleneck for Improved Generalization},
+  author={Wang, Changsheng and Chen, Xin and Liu, Sijia and Ding, Ke},
+  journal={arXiv preprint arXiv:2510.16022},
+  year={2025}
+}
 ```
